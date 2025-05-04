@@ -1,70 +1,162 @@
-# Getting Started with Create React App
+# Blog Subscription Form
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React application that collects user subscriptions through a form and processes them using AWS services (Lambda, DynamoDB, and SES).
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- React-based form with validation
+- AWS Lambda for serverless backend processing
+- DynamoDB for storing subscription data
+- AWS SES for sending confirmation emails
+- Terraform for infrastructure management
+- Netlify for frontend deployment
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Node.js (v14 or higher)
+- AWS account with access credentials
+- AWS CLI configured locally
+- Terraform (optional, for infrastructure deployment)
+- Netlify account (for deployment)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### 1. Clone the repository
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+git clone [your-repo-url]
+cd blog-subscription-form
+```
 
-### `npm run build`
+### 2. Install dependencies
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 3. Configure environment variables
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Update the `.env` file with your AWS credentials and settings:
 
-### `npm run eject`
+```
+# AWS Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# Email Configuration
+ADMIN_EMAIL=admin@yourdomain.com
+FROM_EMAIL=noreply@yourdomain.com
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# API Configuration
+REACT_APP_API_URL=https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/subscribe
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 4. Run the application locally
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm run dev
+```
 
-## Learn More
+This command will start both the React application and the Express server for local development.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## AWS Setup
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 1. Set up AWS resources
 
-### Code Splitting
+```bash
+npm run setup-aws
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+This script will:
+- Create a DynamoDB table for storing subscription data
+- Set up SES for sending emails (requires verification)
 
-### Analyzing the Bundle Size
+⚠️ **Important**: After running this command, check your email inbox for SES verification emails and confirm them.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### 2. Deploy the Lambda function
 
-### Making a Progressive Web App
+```bash
+npm run deploy-lambda
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+This will package and deploy the Lambda function to AWS.
 
-### Advanced Configuration
+### 3. Set up API Gateway (option 1: using Terraform)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+If you're using Terraform:
 
-### Deployment
+```bash
+cd terraform
+terraform init
+terraform apply
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Note the API URL in the output and update your `.env` file.
 
-### `npm run build` fails to minify
+### 4. Set up API Gateway (option 2: manually)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+If you prefer to set up API Gateway manually:
+
+1. Go to the AWS Management Console
+2. Navigate to API Gateway
+3. Create a new REST API
+4. Create a resource with path `/subscribe`
+5. Add a POST method that integrates with your Lambda function
+6. Set up CORS
+7. Deploy the API to a new stage (e.g., 'prod')
+8. Update the `REACT_APP_API_URL` in your `.env` file
+
+## Deployment to Netlify
+
+### 1. Install Netlify CLI (if not already installed)
+
+```bash
+npm install -g netlify-cli
+```
+
+### 2. Build and deploy
+
+```bash
+npm run deploy
+```
+
+This will build the React application and deploy it to Netlify.
+
+### 3. Alternative manual deployment
+
+1. Build the project: `npm run build`
+2. Drag and drop the `build` folder to Netlify
+3. Configure environment variables in Netlify's dashboard
+
+## Project Structure
+
+```
+blog-subscription-form/
+├── public/                  # Public assets
+├── src/
+│   ├── components/          # React components
+│   │   └── SubscriptionForm.js  # Form component
+│   ├── App.js               # Main application component
+│   └── index.js             # Entry point
+├── lambda/                  # AWS Lambda function code
+│   └── subscribeHandler.js  # Lambda handler
+├── terraform/               # Terraform configuration
+│   ├── main.tf              # Main Terraform configuration
+│   └── variables.tf         # Terraform variables
+├── .env                     # Environment variables
+├── server.js                # Local development server
+├── aws-setup.js             # AWS setup script
+├── deploy-lambda.js         # Lambda deployment script
+└── netlify.toml             # Netlify configuration
+```
+
+## Customization
+
+- **Form Fields**: Edit `SubscriptionForm.js` to modify the form fields and validation.
+- **Email Templates**: Update the HTML templates in `subscribeHandler.js` to customize the email content.
+- **Styling**: Modify `App.css` to change the appearance of the form.
+
+## License
+
+[MIT](LICENSE)
