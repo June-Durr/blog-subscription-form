@@ -41,13 +41,18 @@ const SubscriptionForm = () => {
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      // Get the API URL from environment variables or use default
-      const apiUrl = process.env.REACT_APP_API_URL || "/api/subscribe";
+      // Use the direct API Gateway URL for better CORS handling
+      const apiUrl =
+        "https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod/subscribe";
       console.log("Submitting form to:", apiUrl);
 
-      // Send form data to your serverless API endpoint
-      const response = await axios.post(apiUrl, values);
-      console.log("Response received:", response);
+      const response = await axios.post(apiUrl, values, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Response:", response);
 
       setFormStatus({
         submitted: true,
@@ -57,7 +62,7 @@ const SubscriptionForm = () => {
       });
       resetForm();
     } catch (error) {
-      console.error("Submission error details:", error);
+      console.error("Submission error:", error);
       setFormStatus({
         submitted: true,
         error: true,

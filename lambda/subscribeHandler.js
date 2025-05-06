@@ -6,15 +6,40 @@ const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
 const dynamoDb = new DynamoDBClient({ region: "us-east-1" });
 const ses = new SESClient({ region: "us-east-1" });
 
-// Email addresses
-const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
-const FROM_EMAIL = "noreply@yourdomain.com"; // Replace with a verified SES email
+// Email addresses - replace these with your actual email addresses
+const ADMIN_EMAIL = "alberto.camachojr01@gmail.com"; // Replace with your email
+const FROM_EMAIL = "alberto.camachojr01@gmail.com"; // Replace with a verified SES email
 
 exports.handler = async (event) => {
+  // Set up CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers":
+      "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS,POST",
+    "Access-Control-Allow-Credentials": true,
+  };
+
+  // Handle OPTIONS requests for CORS preflight
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: headers,
+      body: JSON.stringify({ message: "CORS preflight response" }),
+    };
+  }
+
   try {
     // Parse the incoming request body
     const body = JSON.parse(event.body);
     const { name, email, phone, package: selectedPackage } = body;
+
+    console.log("Received form submission:", {
+      name,
+      email,
+      phone,
+      package: selectedPackage,
+    });
 
     const timestamp = new Date().toISOString();
 
@@ -30,7 +55,9 @@ exports.handler = async (event) => {
       },
     };
 
+    console.log("Storing data in DynamoDB...");
     await dynamoDb.send(new PutItemCommand(dynamoParams));
+    console.log("Data stored successfully");
 
     // Send confirmation email to the user
     const userEmailParams = {
@@ -62,7 +89,9 @@ exports.handler = async (event) => {
       Source: FROM_EMAIL,
     };
 
+    console.log("Sending confirmation email to user...");
     await ses.send(new SendEmailCommand(userEmailParams));
+    console.log("User email sent successfully");
 
     // Send notification email to admin
     const adminEmailParams = {
@@ -98,15 +127,14 @@ exports.handler = async (event) => {
       Source: FROM_EMAIL,
     };
 
+    console.log("Sending notification email to admin...");
     await ses.send(new SendEmailCommand(adminEmailParams));
+    console.log("Admin email sent successfully");
 
     // Return a success response
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Credentials": true,
-      },
+      headers: headers, // Use the headers defined at the top
       body: JSON.stringify({
         message: "Subscription successful",
         success: true,
@@ -118,10 +146,7 @@ exports.handler = async (event) => {
     // Return an error response
     return {
       statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Credentials": true,
-      },
+      headers: headers, // Use the headers defined at the top
       body: JSON.stringify({
         message: "Failed to process subscription",
         success: false,
