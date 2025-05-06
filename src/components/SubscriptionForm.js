@@ -41,18 +41,20 @@ const SubscriptionForm = () => {
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      // Use the direct API Gateway URL for better CORS handling
+      console.log("Submitting form with values:", values);
+
+      // Make sure to use the correct API Gateway URL
       const apiUrl =
         "https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod/subscribe";
-      console.log("Submitting form to:", apiUrl);
 
+      // Include proper headers and content type
       const response = await axios.post(apiUrl, values, {
         headers: {
           "Content-Type": "application/json",
         },
       });
 
-      console.log("Response:", response);
+      console.log("Response received:", response);
 
       setFormStatus({
         submitted: true,
@@ -62,12 +64,11 @@ const SubscriptionForm = () => {
       });
       resetForm();
     } catch (error) {
-      console.error("Submission error:", error);
+      console.error("Submission error details:", error);
       setFormStatus({
         submitted: true,
         error: true,
-        message:
-          "Sorry, there was an error processing your subscription. Please try again.",
+        message: `Sorry, there was an error processing your subscription: ${error.message}. Please try again.`,
       });
     } finally {
       setSubmitting(false);

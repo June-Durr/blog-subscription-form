@@ -1,15 +1,15 @@
-// lambda/subscribeHandler.js
-const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
-const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
+// Update your lambda/subscribeHandler.js file
+const AWS = require("aws-sdk");
 
 // Initialize AWS clients
-const dynamoDb = new DynamoDBClient({ region: "us-east-1" });
-const ses = new SESClient({ region: "us-east-1" });
+const dynamoDb = new AWS.DynamoDB({ region: "us-east-1" });
+const ses = new AWS.SES({ region: "us-east-1" });
 
-// Email addresses - replace these with your actual email addresses
-const ADMIN_EMAIL = "alberto.camachojr01@gmail.com"; // Replace with your email
-const FROM_EMAIL = "alberto.camachojr01@gmail.com"; // Replace with a verified SES email
+// Email addresses - replace these with your real email addresses
+const ADMIN_EMAIL = "alberto.camachojr01@gmail.com";
+const FROM_EMAIL = "alberto.camachojr01@gmail.com";
 
+// Rest of your handler code with CORS headers
 exports.handler = async (event) => {
   // Set up CORS headers
   const headers = {
@@ -56,7 +56,7 @@ exports.handler = async (event) => {
     };
 
     console.log("Storing data in DynamoDB...");
-    await dynamoDb.send(new PutItemCommand(dynamoParams));
+    await dynamoDb.putItem(dynamoParams).promise();
     console.log("Data stored successfully");
 
     // Send confirmation email to the user
@@ -90,7 +90,7 @@ exports.handler = async (event) => {
     };
 
     console.log("Sending confirmation email to user...");
-    await ses.send(new SendEmailCommand(userEmailParams));
+    await ses.sendEmail(userEmailParams).promise();
     console.log("User email sent successfully");
 
     // Send notification email to admin
@@ -128,13 +128,13 @@ exports.handler = async (event) => {
     };
 
     console.log("Sending notification email to admin...");
-    await ses.send(new SendEmailCommand(adminEmailParams));
+    await ses.sendEmail(adminEmailParams).promise();
     console.log("Admin email sent successfully");
 
     // Return a success response
     return {
       statusCode: 200,
-      headers: headers, // Use the headers defined at the top
+      headers: headers,
       body: JSON.stringify({
         message: "Subscription successful",
         success: true,
@@ -146,7 +146,7 @@ exports.handler = async (event) => {
     // Return an error response
     return {
       statusCode: 500,
-      headers: headers, // Use the headers defined at the top
+      headers: headers,
       body: JSON.stringify({
         message: "Failed to process subscription",
         success: false,

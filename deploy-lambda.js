@@ -41,7 +41,7 @@ const REQUIRED_POLICIES = [
   "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
 ];
 
-// Create a zip file of the Lambda function
+// In your deploy-lambda.js file, update the createZipFile function
 async function createZipFile() {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(
@@ -68,10 +68,20 @@ async function createZipFile() {
       archive.file(handlerPath, { name: "subscribeHandler.js" });
     } else {
       console.error(`Handler file not found at ${handlerPath}`);
-      // Create directories if they don't exist
-      if (!fs.existsSync(path.join(__dirname, "lambda"))) {
-        fs.mkdirSync(path.join(__dirname, "lambda"), { recursive: true });
-      }
+      throw new Error(`Handler file not found at ${handlerPath}`);
+    }
+
+    // Add the entire node_modules/aws-sdk directory
+    const awsSdkPath = path.join(__dirname, "node_modules", "aws-sdk");
+    if (fs.existsSync(awsSdkPath)) {
+      archive.directory(awsSdkPath, "node_modules/aws-sdk");
+    } else {
+      console.warn("aws-sdk module not found in node_modules");
+    }
+
+    archive.finalize();
+  });
+}
 
       // Create a basic handler file
       const basicHandler = `
