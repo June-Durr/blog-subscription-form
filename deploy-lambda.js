@@ -41,7 +41,6 @@ const REQUIRED_POLICIES = [
   "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
 ];
 
-// In your deploy-lambda.js file, update the createZipFile function
 async function createZipFile() {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(
@@ -64,11 +63,195 @@ async function createZipFile() {
 
     // Add the Lambda handler file
     const handlerPath = path.join(__dirname, "lambda", "subscribeHandler.js");
+
     if (fs.existsSync(handlerPath)) {
+      console.log(`Using existing handler file at ${handlerPath}`);
       archive.file(handlerPath, { name: "subscribeHandler.js" });
     } else {
-      console.error(`Handler file not found at ${handlerPath}`);
-      throw new Error(`Handler file not found at ${handlerPath}`);
+      console.log(`Creating basic handler file at ${handlerPath}`);
+      // Make sure the directory exists
+      if (!fs.existsSync(path.dirname(handlerPath))) {
+        fs.mkdirSync(path.dirname(handlerPath), { recursive: true });
+      }
+
+      // Create a basic Lambda function with proper CORS headers
+      const basicHandler = `
+const AWS = require('aws-sdk');
+
+// Initialize AWS clients
+const dynamoDb = new AWS.DynamoDB({ region: "us-east-1" });
+const ses = new AWS.SES({ region: "us-east-1" });
+
+// Email addresses - replace with your real email addresses
+const ADMIN_EMAIL = "alberto.camachor01@gmail.com";
+const FROM_EMAIL = "alberto.camachor01@gmail.com";
+
+exports.handler = async (event) => {
+  // Set up CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "https://musical-salamander-b30b3a.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS,POST",
+    "Access-Control-Allow-Credentials": true
+  };
+
+  // Handle OPTIONS requests for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: headers,
+      body: JSON.stringify({ message: 'CORS preflight response' })
+    };
+  }
+
+  try {
+    // Log the entire event for debugging
+    console.log("Received event:", JSON.stringify(event, null, 2));
+    
+    // Check if event.body exists
+    if (!event.body) {
+      console.error("Event body is undefined or null");
+      throw new Error("Event body is missing");
+    }
+    
+    // Parse the incoming request body
+    let body;
+    try {
+      body = JSON.parse(event.body);
+      console.log("Parsed body:", JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.error("Failed to parse event body:", event.body);
+      throw new Error(\`Invalid JSON in request body: \${parseError.message}\`);
+    }
+    
+    const { name, email, phone, package: selectedPackage } = body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !selectedPackage) {
+      console.error("Missing required fields in request body");
+      throw new Error("Missing required fields: name, email, phone, and package are required");
+    }
+
+    console.log("Processing form submission:", { name, email, phone, package: selectedPackage });
+
+    const timestamp = new Date().toISOString();
+
+    // Store data in DynamoDB
+    const dynamoParams = {
+      TableName: "BlogSubscriptions",
+      Item: {
+        email: { S: email },
+        name: { S: name },
+        phone: { S: phone },
+        package: { S: selectedPackage },
+        subscriptionDate: { S: timestamp }
+      }
+    };
+
+    console.log("Storing data in DynamoDB...");
+    await dynamoDb.putItem(dynamoParams).promise();
+    console.log("Data stored successfully");
+
+    // Send confirmation email to the user
+    const userEmailParams = {
+      Destination: {
+        ToAddresses: [email]
+      },
+      Message: {
+        Body: {
+          Html: {
+            Charset: "UTF-8",
+            Data: \`
+              <html>
+                <body>
+                  <h1>Thank You for Subscribing!</h1>
+                  <p>Hello \${name},</p>
+                  <p>Thank you for subscribing to our blog. You've selected the \${selectedPackage} package.</p>
+                  <p>We'll keep you updated with our latest content and news.</p>
+                  <p>Best regards,<br>Your Blog Team</p>
+                </body>
+              </html>
+            \`
+          }
+        },
+        Subject: {
+          Charset: "UTF-8",
+          Data: "Thanks for Subscribing to Our Blog!"
+        }
+      },
+      Source: FROM_EMAIL
+    };
+
+    console.log("Sending confirmation email to user...");
+    await ses.sendEmail(userEmailParams).promise();
+    console.log("User email sent successfully");
+
+    // Send notification email to admin
+    const adminEmailParams = {
+      Destination: {
+        ToAddresses: [ADMIN_EMAIL]
+      },
+      Message: {
+        Body: {
+          Html: {
+            Charset: "UTF-8",
+            Data: \`
+              <html>
+                <body>
+                  <h1>New Blog Subscription</h1>
+                  <p>A new user has subscribed to the blog:</p>
+                  <ul>
+                    <li><strong>Name:</strong> \${name}</li>
+                    <li><strong>Email:</strong> \${email}</li>
+                    <li><strong>Phone:</strong> \${phone}</li>
+                    <li><strong>Package:</strong> \${selectedPackage}</li>
+                    <li><strong>Date:</strong> \${timestamp}</li>
+                  </ul>
+                </body>
+              </html>
+            \`
+          }
+        },
+        Subject: {
+          Charset: "UTF-8",
+          Data: "New Blog Subscription"
+        }
+      },
+      Source: FROM_EMAIL
+    };
+
+    console.log("Sending notification email to admin...");
+    await ses.sendEmail(adminEmailParams).promise();
+    console.log("Admin email sent successfully");
+
+    // Return a success response
+    return {
+      statusCode: 200,
+      headers: headers,
+      body: JSON.stringify({
+        message: "Subscription successful",
+        success: true
+      })
+    };
+  } catch (error) {
+    console.error("Error processing subscription:", error);
+
+    // Return an error response
+    return {
+      statusCode: 500,
+      headers: headers,
+      body: JSON.stringify({
+        message: "Failed to process subscription",
+        success: false,
+        error: error.message
+      })
+    };
+  }
+};
+      `;
+
+      fs.writeFileSync(handlerPath, basicHandler);
+      archive.file(handlerPath, { name: "subscribeHandler.js" });
     }
 
     // Add the entire node_modules/aws-sdk directory
@@ -83,50 +266,27 @@ async function createZipFile() {
   });
 }
 
-      // Create a basic handler file
-      const basicHandler = `
-exports.handler = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'Hello from Lambda!' }),
-  };
-};
-      `;
-      fs.writeFileSync(handlerPath, basicHandler);
-      archive.file(handlerPath, { name: "subscribeHandler.js" });
-    }
-
-    // Add the required AWS SDK dependencies
-    const nodePath = path.join(__dirname, "node_modules");
-    if (fs.existsSync(nodePath)) {
-      // Only add the necessary AWS SDK files for DynamoDB and SES
-      const awsPaths = ["@aws-sdk/client-dynamodb", "@aws-sdk/client-ses"];
-
-      awsPaths.forEach((awsPath) => {
-        const fullPath = path.join(nodePath, awsPath);
-        if (fs.existsSync(fullPath)) {
-          archive.directory(fullPath, `node_modules/${awsPath}`);
-        }
-      });
-    }
-
-    archive.finalize();
-  });
-}
-
 // Create IAM role for Lambda
 async function createLambdaRole() {
   try {
-    // Create the role
-    console.log(`Creating IAM role: ${LAMBDA_ROLE_NAME}`);
-
-    const createRoleParams = {
-      RoleName: LAMBDA_ROLE_NAME,
-      AssumeRolePolicyDocument: LAMBDA_POLICY_DOCUMENT,
-    };
-
-    // Try to create the role
+    // Check if the role already exists
     try {
+      const getRoleParams = { RoleName: LAMBDA_ROLE_NAME };
+      const roleData = await iamClient.send(new GetRoleCommand(getRoleParams));
+      console.log("Retrieved existing role:", roleData.Role.Arn);
+      return roleData.Role.Arn;
+    } catch (error) {
+      if (error.name !== "NoSuchEntity") {
+        throw error;
+      }
+
+      // Role doesn't exist, create it
+      console.log(`Creating IAM role: ${LAMBDA_ROLE_NAME}`);
+      const createRoleParams = {
+        RoleName: LAMBDA_ROLE_NAME,
+        AssumeRolePolicyDocument: LAMBDA_POLICY_DOCUMENT,
+      };
+
       const roleData = await iamClient.send(
         new CreateRoleCommand(createRoleParams)
       );
@@ -148,19 +308,6 @@ async function createLambdaRole() {
       await new Promise((resolve) => setTimeout(resolve, 15000));
 
       return roleData.Role.Arn;
-    } catch (error) {
-      // If role already exists, try to get it
-      if (error.name === "EntityAlreadyExistsException") {
-        console.log("Role already exists, retrieving it...");
-        const getRoleParams = { RoleName: LAMBDA_ROLE_NAME };
-        const roleData = await iamClient.send(
-          new GetRoleCommand(getRoleParams)
-        );
-        console.log("Retrieved existing role:", roleData.Role.Arn);
-        return roleData.Role.Arn;
-      } else {
-        throw error;
-      }
     }
   } catch (error) {
     console.error("Error with IAM role:", error);
