@@ -1,17 +1,16 @@
-# Create the netlify.toml file
-echo "[build]
-  command = \"npm run build\"
-  publish = \"build\"
+[build]
+  command = "npm run build"
+  publish = "build"
 
 # Redirect API requests to AWS API Gateway
 [[redirects]]
-  from = \"/api/*\"
-  to = \"https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod"
+  from = "/api/*"
+  to = "https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod/:splat"
   status = 200
   force = true
 
 # SPA fallback
 [[redirects]]
-  from = \"/*\"
-  to = \"/index.html\"
-  status = 200" > netlify.toml
+  from = "/*"
+  to = "/index.html"
+  status = 200

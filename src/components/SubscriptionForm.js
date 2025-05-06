@@ -43,9 +43,11 @@ const SubscriptionForm = () => {
     try {
       // Get the API URL from environment variables or use default
       const apiUrl = process.env.REACT_APP_API_URL || "/api/subscribe";
+      console.log("Submitting form to:", apiUrl);
 
       // Send form data to your serverless API endpoint
-      await axios.post(apiUrl, values);
+      const response = await axios.post(apiUrl, values);
+      console.log("Response received:", response);
 
       setFormStatus({
         submitted: true,
@@ -55,13 +57,13 @@ const SubscriptionForm = () => {
       });
       resetForm();
     } catch (error) {
+      console.error("Submission error details:", error);
       setFormStatus({
         submitted: true,
         error: true,
         message:
           "Sorry, there was an error processing your subscription. Please try again.",
       });
-      console.error("Submission error:", error);
     } finally {
       setSubmitting(false);
     }

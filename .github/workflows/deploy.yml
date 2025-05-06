@@ -2,34 +2,39 @@ name: Deploy Blog Subscription Form
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16"
-          cache: "npm"
+    - uses: actions/checkout@v3
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build React app
+      run: npm run build
+      env:
+        REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+    
+    - name: Deploy to Netlify
+      uses: nwtgck/actions-netlify@v2
+      with:
+        publish-dir: './build'
+        production-branch: main
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build React app
-        run: npm run build
-        env:
-          REACT_APP_API_URL: ${{ https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod }}
-
-      - name: Deploy to Netlify
-        uses: netlify/actions/cli@master
-        with:
-          args: deploy --prod --dir=build
-        env:
-          NETLIFY_AUTH_TOKEN: ${{nfp_SV4eDoApdpVjbD6kCvspn1FN5jKQDBqn1657 }}
-          NETLIFY_SITE_ID: ${{b5938b72-3aa2-4f21-a86e-4564fb560217}}
+        #   REACT_APP_API_URL: ${{ https://517wsvjd67.execute-api.us-east-1.amazonaws.com/prod }}
+        #   NETLIFY_AUTH_TOKEN: ${{nfp_SV4eDoApdpVjbD6kCvspn1FN5jKQDBqn1657 }}
+        #   NETLIFY_SITE_ID: ${{b5938b72-3aa2-4f21-a86e-4564fb560217}}
